@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Logger Dashboard</title>
+</head>
+<body>
+    <h1>Temperature & Humidity Logger</h1>
+    <p>Temperature: {{ data.temperature }} °C</p>
+    <p>Humidity: {{ data.humidity }} %</p>
+    <p>Last Updated: {{ data.timestamp }}</p>
+
+    <h2>Set Polling Interval (seconds)</h2>
+    <form action="/set_interval" method="POST">
+        <input type="number" name="interval" value="{{ interval }}" min="1">
+        <button type="submit">Update Interval</button>
+    </form>
+
+    <h2>Export Data</h2>
+    <form action="/export" method="GET">
+        <button type="submit">Go to Export Page</button>
+    </form>
+</body>
+</html>
