@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Logger Dashboard</title>
+    <title>Temperature & Humidity Logger</title>
 </head>
 <body>
     <h1>Temperature & Humidity Logger</h1>
-    <p>Temperature: {{ data.temperature }} °C</p>
-    <p>Humidity: {{ data.humidity }} %</p>
-    <p>Last Updated: {{ data.timestamp }}</p>
+    <p id="temperature">Temperature: -- °C</p>
+    <p id="humidity">Humidity: -- %</p>
+    <p id="timestamp">Last Updated: --</p>
 
     <h2>Set Polling Interval (seconds)</h2>
     <form action="/set_interval" method="POST">
@@ -20,5 +20,23 @@
     <form action="/export" method="GET">
         <button type="submit">Go to Export Page</button>
     </form>
+
+    <script>
+        async function fetchLatestData() {
+            try {
+                const response = await fetch('/api/latest_data');
+                const data = await response.json();
+                
+                document.getElementById('temperature').innerText = "Temperature: " + data.temperature + " °C";
+                document.getElementById('humidity').innerText = "Humidity: " + data.humidity + " %";
+                document.getElementById('timestamp').innerText = "Last Updated: " + data.timestamp;
+            } catch (error) {
+                console.error('Error fetching latest data:', error);
+            }
+        }
+
+        fetchLatestData();
+        setInterval(fetchLatestData, 1000);
+    </script>
 </body>
 </html>

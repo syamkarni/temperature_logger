@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, send_file
 import threading
 import time
+import sqlite3
 from pymodbus.client import ModbusTcpClient
 from fpdf import FPDF
 import io
@@ -10,14 +11,38 @@ app = Flask(__name__)
 # basic config
 host = '192.168.100.110'
 port = 502
-polling_interval = 5 
-log_data = []  
+polling_interval = 1
+db_file = "logger_data.db"
 
 latest_data = {
     "temperature": None,
     "humidity": None,
     "timestamp": None
 }
+
+def init_db():
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            temperature REAL,
+            humidity REAL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def insert_log(timestamp, temperature, humidity):
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO logs (timestamp, temperature, humidity)
+        VALUES (?, ?, ?)
+    ''', (timestamp, temperature, humidity))
+    conn.commit()
+    conn.close()
 
 def poll_modbus_data():
     global polling_interval
@@ -37,11 +62,7 @@ def poll_modbus_data():
                         "timestamp": timestamp
                     })
 
-                    log_data.append({
-                        "timestamp": timestamp,
-                        "temperature": temperature,
-                        "humidity": humidity
-                    })
+                    insert_log(timestamp, temperature, humidity)
                     print(f"Logged at {timestamp}")
                 else:
                     print(f"Error reading registers")
@@ -74,13 +95,23 @@ def export():
         start_time = request.form.get('start_time')
         end_time = request.form.get('end_time')
 
-        filtered = [
-            entry for entry in log_data
-            if start_time <= entry['timestamp'] <= end_time
-        ]
+        start_time = start_time.replace('T', ' ') + ":00"
+        end_time = end_time.replace('T', ' ') + ":00"
 
-        if not filtered:
-            return "No data in this range."
+        conn = sqlite3.connect(db_file)
+        c = conn.cursor()
+        c.execute('''
+            SELECT timestamp, temperature, humidity
+            FROM logs
+            WHERE timestamp BETWEEN ? AND ?
+            ORDER BY timestamp ASC
+        ''', (start_time, end_time))
+
+        rows = c.fetchall()
+        conn.close()
+
+        if not rows:
+            return "No data found for given time range."
 
         pdf = FPDF()
         pdf.add_page()
@@ -94,10 +125,10 @@ def export():
         pdf.cell(40, 10, "Humidity (%)", 1)
         pdf.ln()
 
-        for row in filtered:
-            pdf.cell(60, 10, row['timestamp'], 1)
-            pdf.cell(40, 10, str(row['temperature']), 1)
-            pdf.cell(40, 10, str(row['humidity']), 1)
+        for timestamp, temperature, humidity in rows:
+            pdf.cell(60, 10, timestamp, 1)
+            pdf.cell(40, 10, f"{temperature}", 1)
+            pdf.cell(40, 10, f"{humidity}", 1)
             pdf.ln()
 
         pdf_bytes = pdf.output(dest='S').encode('latin1')
@@ -108,6 +139,8 @@ def export():
     return render_template('export.html')
 
 if __name__ == '__main__':
+    init_db()
+
     polling_thread = threading.Thread(target=poll_modbus_data)
     polling_thread.daemon = True
     polling_thread.start()
