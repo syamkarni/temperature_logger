@@ -7,11 +7,11 @@
 <body>
     <h1>Export Data as PDF</h1>
     <form action="/export" method="POST">
-        <label>Start Time (YYYY-MM-DD HH:MM:SS):</label><br>
-        <input type="text" name="start_time" required><br><br>
+        <label>Start Time:</label><br>
+        <input type="datetime-local" name="start_time" required><br><br>
 
-        <label>End Time (YYYY-MM-DD HH:MM:SS):</label><br>
-        <input type="text" name="end_time" required><br><br>
+        <label>End Time:</label><br>
+        <input type="datetime-local" name="end_time" required><br><br>
 
         <button type="submit">Export PDF</button>
     </form>
